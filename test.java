@@ -1,26 +1,36 @@
-package com.autonomousreview.demo;
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
+    // 1. PLAINTEXT PASSWORD USAGE
+    @PostMapping("/login")
+    public String login(@RequestBody LoginRequest request) {
 
-public class PaymentService {
+        String email = request.getEmail();
+        String password = request.getPassword();
 
-    public String findPaymentByTransactionId(String transactionId) throws Exception {
+        // Password is being used/stored directly without hashing
+        User user = userRepository.findByEmailAndPassword(email, password);
 
-        Connection conn = DriverManager.getConnection(
-            "jdbc:mysql://localhost:3306/db",
-            "root",
-            "password"
-        );
+        return user != null ? "Login successful" : "Invalid credentials";
+    }
 
-        String sql =
-            "SELECT * FROM transactions WHERE tx_id = '" + transactionId + "'";
+    // 2. MISSING AUTHORIZATION
+    @GetMapping("/{id}")
+    public User getUser(@PathVariable Long id) {
 
-        ResultSet rs = conn.createStatement().executeQuery(sql);
+        // No authentication/authorization check
+        // Any user can request another user's data
+        return userRepository.findById(id).orElse(null);
+    }
 
-        return rs.next()
-            ? rs.getString("status")
-            : "NOT_FOUND";
+    // 3. OS COMMAND INJECTION / UNSAFE COMMAND EXECUTION
+    @PostMapping("/execute")
+    public String executeCommand(@RequestParam String command) throws Exception {
+
+        // User-controlled input is passed directly to the OS
+        Runtime.getRuntime().exec(command);
+
+        return "Command executed";
     }
 }
